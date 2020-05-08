@@ -73,6 +73,7 @@ char* start_disassemble(unsigned char* opcodes, int start, int until, char* stro
         printf("%s\n", instruction);
         regpc_ptr += regpc_delta + 1;    
     }
+    return NULL;
 }
 
 void dis_abso() { //dis_absolute

@@ -11,20 +11,16 @@
 //
 
 typedef struct __attribute__((packed)){
-    char magic[4];
-    char prg_rom_size_l;
-    char chr_rom_size_l;    
-    char flags_6;
-    char flags_7;
-    char mapper;
-    char prg_chr_rom_size_h; // 4 bit msb
-    char prg_ram_prg_nvram; //shift count 
-    char chr_ram_size;
-    char timing; //ppu cpu/ ntsc or pal
-    char sys_type;
-    char misc_roms;
-    char default_exp_dev;
-    char payload[0];
+    char magic[4]; 
+    char prg_rom_bank_size; //4     16kb
+    char chr_rom_bank_size; //5     8kb
+    char flags_6;           //6
+    char flags_7;           //7
+    char prg_ram_bank_size; //8     8kb
+    char flag_9; // 4 bit msb
+    char flag_10; //shift count 
+    char reserved[5];
+    uint8_t payload[0];
 }nes2_file_header_t;
 
 uint8_t submapper, *file_ptr, trainer, *prg_rom_ptr, *chr_rom_ptr, *misc_rom_ptr, *prg_ram, *prg_nvram;
@@ -65,10 +61,10 @@ int load_nes2(char *filepath){
     }
 
     file_header = (nes2_file_header_t*)file_ptr;
-    prg_rom_size = file_header->prg_rom_size_l + (file_header->prg_chr_rom_size_h&0x0F)<<8;
-    chr_rom_size = file_header->chr_rom_size_l + (file_header->prg_chr_rom_size_h&0xF0)<<4;
-    prg_ram_size = 1<<(file_header->prg_ram_prg_nvram&0x0F);
-    prg_nvram_size = 1<<((file_header->prg_ram_prg_nvram&0xF0)>>4);
+    prg_rom_size = file_header->prg_rom_bank_size*65536; 
+    chr_rom_size = file_header->chr_rom_bank_size*8192;
+
+    prg_ram_size = prg_ram_bank_size*8192;
     misc_rom_size = size-(chr_rom_size + prg_rom_size + sizeof(nes2_file_header_t));
 
 
@@ -112,9 +108,10 @@ int load_nes2(char *filepath){
     return 0;
 }
 
-
+/*
 int main(){
         
     load_nes2("official_only.nes");
     return 0;
 }
+*/

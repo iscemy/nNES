@@ -1,5 +1,6 @@
 #include "emu_defs.h"
 
+#include "stdio.h"
 
 #define uint16_t unsigned short
 
@@ -47,28 +48,34 @@ int mem_map(char *name,int name_size, int size){
 }
 
 */
-
-int cas_mem_read(uint16_t addr, uint8_t *return_val){
+int bus_errors = 0;
+uint8_t *cas_mem_read(uint16_t addr){
     uint8_t *mapper_ret;
+
     if(addr < 0x2000){//cpu internal ram
-        *return_val = cpu_internal_ram[addr&0x7FF];
+        return &cpu_internal_ram[addr&0x7FF];
     }else if((addr>=0x2000)&&(addr<0x4000)){//ppu registers
-        *return_val = ppu_registers[addr&0x0007];
+        return  &ppu_registers[addr&0x0007];
     }else if((addr>=0x4000)&&(addr<0x4018)){//apu registers
-        *return_val = apu_registers[addr&0x000F];
+        return  &apu_registers[addr&0x000F];
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers
 
-    }else if((addr>=0x4020)&&(addr<0xFFFF)){//to mapper
+    }else if((addr>=0x4020)&&(addr<=0xFFFF)){//to mapper
         //only mapper0 for now
         mapper_ret = mapper0(addr);
         if(mapper_ret != NULL){
-            *return_val = *mapper0(addr);
+            return mapper_ret;
+        }else{
+            bus_errors++;
         }
     }else{
-        return -1;
+        bus_errors++;
+        printf("\nbus_errors\n");
+        return NULL;
     }
-
-    return 0;
+    bus_errors++;
+    printf("\nbus_errors\n");
+    return NULL;
 }
 
 
@@ -82,7 +89,7 @@ int cas_mem_write(uint16_t addr, uint8_t val){
         apu_registers[addr&0x000F] = val;
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers
 
-    }else if((addr>=0x4020)&&(addr<0xFFFF)){//to mapper
+    }else if((addr>=0x4020)&&(addr<=0xFFFF)){//to mapper
         //only mapper0 for now
         *mapper0(addr) = val;
 
