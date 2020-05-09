@@ -1,5 +1,5 @@
 #include "emu_defs.h"
-
+#include <2c02.h>
 #include "stdio.h"
 
 #define uint16_t unsigned short
@@ -10,7 +10,7 @@ extern int prg_rom_size,chr_rom_size, prg_ram_size, prg_nvram_size, trainer_offs
 
 //TODO:this registers would be better if constructed as structs
 uint8_t cpu_internal_ram[0x7FF];
-uint8_t ppu_registers[8];
+uint8_t *ppu_registers_ptr = (uint8_t*)&ppu_registers;
 uint8_t apu_registers[16];
 
 
@@ -18,6 +18,7 @@ uint8_t apu_registers[16];
 char dummy_mem[0xFFFF];
 
 uint8_t* mapper0(uint16_t addr){
+    //printf("mapper mem read %02x\n",addr);
     if((addr>=0x6000)&&(addr < 0x8000)){
         if(prg_ram_size > 0){
             return &prg_ram[(addr&0x1FFF)&((uint16_t)(prg_ram_size-1))];
@@ -28,7 +29,8 @@ uint8_t* mapper0(uint16_t addr){
     }else if((addr>=0x8000)&&(addr < 0xC000)){
         return &prg_rom_ptr[addr&0x3FFF];
     }else if((addr>=0xC000)&&(addr <= 0xFFFF)){
-        return &prg_rom_ptr[0x4000 + (addr&0x3FFF)];
+        //printf("mapper0 8000 ffff %02x\n",prg_rom_ptr[0x79e]); 
+        return &prg_rom_ptr[(addr&0x3FFF)];
     }else{
         return 0;
     }
@@ -51,11 +53,11 @@ int mem_map(char *name,int name_size, int size){
 int bus_errors = 0;
 uint8_t *cas_mem_read(uint16_t addr){
     uint8_t *mapper_ret;
-
+    //printf("mem read %02x\n",addr);
     if(addr < 0x2000){//cpu internal ram
         return &cpu_internal_ram[addr&0x7FF];
     }else if((addr>=0x2000)&&(addr<0x4000)){//ppu registers
-        return  &ppu_registers[addr&0x0007];
+        return  &ppu_registers_ptr[addr&0x0007];
     }else if((addr>=0x4000)&&(addr<0x4018)){//apu registers
         return  &apu_registers[addr&0x000F];
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers
@@ -67,6 +69,7 @@ uint8_t *cas_mem_read(uint16_t addr){
             return mapper_ret;
         }else{
             bus_errors++;
+            printf("\nbus_errors\n");
         }
     }else{
         bus_errors++;
@@ -84,7 +87,7 @@ int cas_mem_write(uint16_t addr, uint8_t val){
    if(addr < 0x2000){
         cpu_internal_ram[addr&0x7FF] = val;
     }else if((addr>=0x2000)&&(addr<0x4000)){//ppu registers
-        ppu_registers[addr&0x0007] = val;
+        ppu_registers_ptr[addr&0x0007] = val;
     }else if((addr>=0x4000)&&(addr<0x4018)){//apu registers
         apu_registers[addr&0x000F] = val;
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers

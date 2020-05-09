@@ -1,3 +1,4 @@
+/*
 #include <stdlib.h>
 
 #include <SDL2/SDL.h>
@@ -8,10 +9,10 @@
 #define FONT_SIZE 20
 
 
-/*
+
 - x, y: upper left corner.
 - texture, rect: outputs.
-*/
+
 void get_text_and_rect(SDL_Renderer *renderer, int x, int y, char *text,
         TTF_Font *font, SDL_Texture **texture, SDL_Rect *rect) {
     int text_width;
@@ -87,7 +88,7 @@ int screen_thread() {
         SDL_Delay(10);
     }
 
-    /* Deinit TTF. */
+
     SDL_DestroyTexture(texture1);
     TTF_Quit();
 
@@ -96,3 +97,4 @@ int screen_thread() {
     SDL_Quit();
     return EXIT_SUCCESS;
 }
+*/

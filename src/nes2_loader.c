@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "emu_defs.h"
+#include <emu_defs.h>
+#include <nes2_loader.h>
 
 #define GET_BIT(num, c)     ((num&(0x01<<c))>>c)
 #define SET_BIT(num, c)     (num=((num)|(0x01<<c)))
@@ -27,8 +28,7 @@ typedef struct __attribute__((packed)){
     uint8_t payload[0];
 }nes2_file_header_t;
 
-uint8_t submapper, *file_ptr, trainer, *prg_rom_ptr, *chr_rom_ptr, *misc_rom_ptr, *prg_ram, *prg_nvram;
-int prg_rom_size,chr_rom_size, prg_ram_size, prg_nvram_size, trainer_offset, misc_rom_size;
+
 
 int load_nes2(char *filepath){
     int bytes_read = 0,index = 0, total_readed_byte = 0, size;
@@ -90,7 +90,7 @@ int load_nes2(char *filepath){
     }
 
     if((prg_nvram == NULL)||(prg_ram == NULL)){
-        free(file_ptr);
+        //free(file_ptr);
         free(prg_nvram);
         free(prg_ram);
         //things gone wrong
@@ -110,6 +110,8 @@ int load_nes2(char *filepath){
     chr_rom_ptr = prg_rom_ptr + prg_rom_size;
     misc_rom_ptr = chr_rom_ptr + chr_rom_size;
     
+    printf("0x400F 0x400E:%x \n",prg_rom_ptr[0x79e]);
+
     return 0;
 }
 

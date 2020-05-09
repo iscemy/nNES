@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cpu_addr_space.h>
-
+#include <cpu.h>
 
 unsigned int operand = 0, outval = 0, cycles, addr_mode = 0, total_cycle = 0, regpc_d;
 bool is_page_crossed = 0;
@@ -570,11 +570,11 @@ int tick(){
 	if(cycles == 0){
 		opcode = *cas_mem_read(regpc);
         ////printf("pc:%04x after: opcode: %02x operand %02x A:%02x X:%02x Y:%02x SP: %02x, SR: %02x\n",regpc, opcode, operand,regac, regx, regy, regsp, status_r);
-        ////printf("pre:   opcode: %x pc:%x operand %x\n",opcode, regpc, operand);
+        printf("pre:   opcode: %x pc:%x operand %x\n",opcode, regpc, operand);
 		((void(*)(void))addrtable[opcode])();
 		((void(*)(void))optable[opcode])();
 		cycles = ticktable[opcode];
-        ////printf("pc:%04x after: opcode: %02x operand %02x A:%02x X:%04x Y:%02x PC:%04x SP: %02x, SR: %02x\n",regpc, opcode, operand,regac, regx, regy, regpc, regsp, status_r);
+        //printf("pc:%04x after: opcode: %02x operand %02x A:%02x X:%04x Y:%02x PC:%04x SP: %02x, SR: %02x\n",regpc, opcode, operand,regac, regx, regy, regpc, regsp, status_r);
 		if(is_page_crossed == 1){
 			cycles += 1;
 		}
@@ -592,6 +592,7 @@ int tick(){
 void reset_state(){
     regsp -=3;
     status_r.interrupt = 1;
+    regpc = ((*cas_mem_read(0xFFFD))<<8) + *cas_mem_read(0xFFFC);
 }
 
 void power_up_state(){
@@ -599,13 +600,13 @@ void power_up_state(){
     regac = 0;
     regx = 0;
     regy = 0;
-
-
+    regpc = ((*cas_mem_read(0xFFFD))<<8) + *cas_mem_read(0xFFFC);
+    printf("\npower up state regpc %x\n",regpc);
 }
 
 void illi(){
-    ////printf("\nillegal instruction\n");
-    ////printf("A:%x X:%x Y:%x PC:%x SP: %x opcode:%x\n",regac, regx, regy, regpc, regsp, address_space[regpc]);
+    printf("\nillegal instruction\n");
+    //printf("A:%x X:%x Y:%x PC:%x SP: %x opcode:%x\n",regac, regx, regy, regpc, regsp, address_space[regpc]);
 }
 
 unsigned char test_rom[] = {0xa9, 0xff, 0x49, 0x7f};
