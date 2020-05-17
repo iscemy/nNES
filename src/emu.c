@@ -2,10 +2,13 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+
+#include <2c02.h>
 #include <nes2_loader.h>
 #include <cpu.h>
 #include <utilities.h>
 #include <disassembler.h>
+
 #define EMU_INFO_YOFFSET 260
 #define WINDOW_WIDTH 300+EMU_INFO_YOFFSET
 #define WINDOW_HEIGHT (300)
@@ -76,25 +79,36 @@ int main() {
    
     load_nes2("donkey.nes");
     power_up_state();
+    ppu_powerup_state();
     update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
+    bool run = false;
     //while(1);
     while (!quit) {
+
+        if(run == run){
+            cpu_tick();
+            update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
+        }  
         while (SDL_PollEvent(&event) == 1) {
             if (event.type == SDL_QUIT) {
                 quit = 1;
-            }
-
+            }         
             if(event.type == SDL_KEYDOWN){
-                
+  
                 
                 switch( event.key.keysym.sym ){
                     case SDLK_LEFT:
-                        memdump(prg_rom_ptr, 0x790, 0x800); 
-                        //start_disassemble(, int start, int size);
+                        //memdump(prg_rom_ptr, 0x790, 0x800); 
+                        //start_disassemble(regpc, regpc, int size);
                         break;
                     case SDLK_RIGHT:
-                        tick();
+                        cpu_tick();
                         update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
+                        break;
+                    case SDLK_UP:
+                        run = !run;
+                        if(run == true)
+                        printf("%x\n",run);
                         break;
                     default:
                         break;
@@ -110,11 +124,12 @@ int main() {
         for(int line_index = 0; line_index<sizeof(lines)/sizeof(char*);line_index++){
             if(lines[line_index] != 0){
                 get_text_and_rect(renderer, EMU_INFO_YOFFSET, line_index*(FONT_SIZE),lines[line_index] , font, &texture1, &rect1);
-                SDL_RenderCopy(renderer, texture1, NULL, &rect1);
+                 SDL_RenderCopy(renderer, texture1, NULL, &rect1);
+                 SDL_DestroyTexture(texture1);
             }
         }
         SDL_RenderPresent(renderer);
-        SDL_Delay(10);
+        //SDL_Delay(10);
     }
 
     /* Deinit TTF. */

@@ -565,12 +565,12 @@ void brk(){
 	
 }
 //"A:%x X:%x Y:%x PC:%x SP: %x, SR: %x clock:%d\n",regac, regx, regy, regpc, regsp, status_r, index
-int tick(){
+int cpu_tick(){
 	unsigned char opcode;
 	if(cycles == 0){
 		opcode = *cas_mem_read(regpc);
         ////printf("pc:%04x after: opcode: %02x operand %02x A:%02x X:%02x Y:%02x SP: %02x, SR: %02x\n",regpc, opcode, operand,regac, regx, regy, regsp, status_r);
-        printf("pre:   opcode: %x pc:%x operand %x\n",opcode, regpc, operand);
+        //printf("pre:   opcode: %x pc:%x operand %x\n",opcode, regpc, operand);
 		((void(*)(void))addrtable[opcode])();
 		((void(*)(void))optable[opcode])();
 		cycles = ticktable[opcode];
@@ -608,8 +608,6 @@ void illi(){
     printf("\nillegal instruction\n");
     //printf("A:%x X:%x Y:%x PC:%x SP: %x opcode:%x\n",regac, regx, regy, regpc, regsp, address_space[regpc]);
 }
-
-unsigned char test_rom[] = {0xa9, 0xff, 0x49, 0x7f};
 
 /*
 int main(){

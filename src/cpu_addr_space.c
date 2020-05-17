@@ -38,26 +38,17 @@ uint8_t* mapper0(uint16_t addr){
     return 0;
 }
 
-
-/*
-
-int mem_map(char *name,int name_size, int size){
-    if(name_size < 5){
-
-    }else{
-        return -1;
-    }
-}
-
-*/
 int bus_errors = 0;
+
 uint8_t *cas_mem_read(uint16_t addr){
     uint8_t *mapper_ret;
-    //printf("mem read %02x\n",addr);
+    int status = 0;
+    //printf("cas_addspace read %02x\n",addr);
     if(addr < 0x2000){//cpu internal ram
         return &cpu_internal_ram[addr&0x7FF];
     }else if((addr>=0x2000)&&(addr<0x4000)){//ppu registers
-        return  &ppu_registers_ptr[addr&0x0007];
+        return read_ppu(addr, status);
+        //return  &ppu_registers_ptr[addr&0x0007];
     }else if((addr>=0x4000)&&(addr<0x4018)){//apu registers
         return  &apu_registers[addr&0x000F];
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers
@@ -84,10 +75,12 @@ uint8_t *cas_mem_read(uint16_t addr){
 
 int cas_mem_write(uint16_t addr, uint8_t val){
     //only mapper0 for now
+    //printf("cas_addspace write %02x\n",addr);
    if(addr < 0x2000){
         cpu_internal_ram[addr&0x7FF] = val;
     }else if((addr>=0x2000)&&(addr<0x4000)){//ppu registers
-        ppu_registers_ptr[addr&0x0007] = val;
+        //ppu_registers_ptr[addr&0x0007] = val;
+        write_ppu(addr, val);
     }else if((addr>=0x4000)&&(addr<0x4018)){//apu registers
         apu_registers[addr&0x000F] = val;
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers

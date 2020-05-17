@@ -1,7 +1,7 @@
 #pragma once
 #include <stdbool.h>
 
-int tick();
+int cpu_tick();
 void reset_state();
 void power_up_state();
 

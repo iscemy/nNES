@@ -47,8 +47,12 @@ struct{
     uint8_t     PPUDATA;
 }__attribute__((packed))ppu_registers;
 
+
+
 uint8_t OAMDMA;
- 
+void ppu_powerup_state();
+int write_ppu(uint16_t addr, uint8_t data);
+uint8_t *read_ppu(uint16_t addr, int status);
 
 
 
