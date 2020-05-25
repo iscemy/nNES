@@ -10,8 +10,6 @@
 
 
 
-- x, y: upper left corner.
-- texture, rect: outputs.
 
 void get_text_and_rect(SDL_Renderer *renderer, int x, int y, char *text,
         TTF_Font *font, SDL_Texture **texture, SDL_Rect *rect) {
@@ -82,6 +80,7 @@ int screen_thread() {
             if(lines[line_index] != 0){
                 get_text_and_rect(renderer, EMU_INFO_YOFFSET, line_index*(FONT_SIZE),lines[line_index] , font, &texture1, &rect1);
                 SDL_RenderCopy(renderer, texture1, NULL, &rect1);
+                SDL_DestroyTexture(texture1);
             }
         }
         SDL_RenderPresent(renderer);

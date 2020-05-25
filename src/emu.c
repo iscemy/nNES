@@ -27,6 +27,9 @@
 - x, y: upper left corner.
 - texture, rect: outputs.
 */
+
+extern bool NMI_SIG;
+
 void get_text_and_rect(SDL_Renderer *renderer, int x, int y, char *text,
         TTF_Font *font, SDL_Texture **texture, SDL_Rect *rect) {
     int text_width;
@@ -47,16 +50,22 @@ void get_text_and_rect(SDL_Renderer *renderer, int x, int y, char *text,
 
 
 char *lines[5] = {0,0,0,0,0};
-char line1[30], line2[30];
+char line1[30], line2[30], line3[30], line4[30];
 void update_cpu_status_texts(uint8_t regac, uint8_t regx, uint8_t regy, uint16_t pc, uint8_t sp){
     
     snprintf(line1, sizeof(line1), "A:%02x X:%02x Y:%02x", regac,regx,regy);
     snprintf(line2, sizeof(line2), "PC:%04x SP:%02x", pc, sp);
+    snprintf(line3, sizeof(line3), "%02x, %02x, %02x, %02x, %02x, %02x",    ppu_registers.PPUCTRL, ppu_registers.PPUMASK, ppu_registers.PPUSTATUS,
+                                                                            ppu_registers.OAMADDR, ppu_registers.OAMDATA, ppu_registers.PPUSCROLL);
+    snprintf(line4, sizeof(line4), "%d", NMI_SIG);
     lines[0] = line1;	
     lines[1] = line2;
+    lines[2] = line3;
+    lines[3] = line4;
 }
 
 
+extern uint8_t *name_table_0;
 
 int main() {
     SDL_Event event;
@@ -83,10 +92,24 @@ int main() {
     update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
     bool run = false;
     //while(1);
+    start_disassembler(0x8000,0x7FFF);
+    bool print_evey_inst = false;
+    //return 0;
     while (!quit) {
 
-        if(run == run){
-            cpu_tick();
+        if(run == true){
+            for(int i = 0; i<100; i++){
+                        ppu_tick();
+                        ppu_tick();
+                        ppu_tick();
+                        if((cpu_tick() == 1)&&(print_evey_inst == 1)){
+                            dissassemble_at_addr(regpc);
+                        }
+                        if(regpc == 0xf4fc){
+                            printf("0xf4fc\n");
+                            //return 0;                      
+                        }
+            }
             update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
         }  
         while (SDL_PollEvent(&event) == 1) {
@@ -94,27 +117,40 @@ int main() {
                 quit = 1;
             }         
             if(event.type == SDL_KEYDOWN){
-  
                 
                 switch( event.key.keysym.sym ){
                     case SDLK_LEFT:
-                        //memdump(prg_rom_ptr, 0x790, 0x800); 
+                        memdump(name_table_0, 0x0, 0x400); 
                         //start_disassemble(regpc, regpc, int size);
                         break;
                     case SDLK_RIGHT:
-                        cpu_tick();
+                        print_evey_inst = !print_evey_inst;
                         update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
+                        
                         break;
                     case SDLK_UP:
                         run = !run;
                         if(run == true)
-                        printf("%x\n",run);
+                            printf("%x\n",run);
+
                         break;
+
+                    case SDLK_s:
+                        
+                        ppu_tick();
+                        ppu_tick();
+                        ppu_tick();         
+                        cpu_tick();               
+                        dissassemble_at_addr(regpc);
+                        update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
+                            
+                    break;
                     default:
                         break;
                 }               
             }
         }
+        
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
 
@@ -129,7 +165,7 @@ int main() {
             }
         }
         SDL_RenderPresent(renderer);
-        //SDL_Delay(10);
+        SDL_Delay(10);
     }
 
     /* Deinit TTF. */

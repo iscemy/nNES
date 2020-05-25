@@ -1,7 +1,7 @@
 CC = gcc
 INC = include
 OBJ_P = obj/
-CFLAGS = -Wall -I $(INC) -lSDL2 -lSDL2_ttf
+CFLAGS = -Wall -I $(INC) -lSDL2 -lSDL2_ttf -lpthread
 
 SRC = $(wildcard src/*.c)
 OBJ = (src:.obj=.o)

@@ -8,11 +8,15 @@ unsigned int operand = 0, outval = 0, cycles, addr_mode = 0, total_cycle = 0, re
 bool is_page_crossed = 0;
 void *operand_addr = NULL;
 bool i_mask_pre = 0;
+
+bool NMI_SIG;
+
 /*addressing modes*/
 void imp() { //implied
     //no operand implied by instruction
 }
 void abso() { //absolute
+    
 	operand = *cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1));
 	operand_addr = cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1));
 	addr_mode = addr_mode_abso;
@@ -568,6 +572,10 @@ void brk(){
 int cpu_tick(){
 	unsigned char opcode;
 	if(cycles == 0){
+        if(NMI_SIG == true){
+            nmi();
+            NMI_SIG = false;
+        }
 		opcode = *cas_mem_read(regpc);
         ////printf("pc:%04x after: opcode: %02x operand %02x A:%02x X:%02x Y:%02x SP: %02x, SR: %02x\n",regpc, opcode, operand,regac, regx, regy, regsp, status_r);
         //printf("pre:   opcode: %x pc:%x operand %x\n",opcode, regpc, operand);

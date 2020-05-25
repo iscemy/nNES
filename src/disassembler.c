@@ -1,4 +1,9 @@
 #include <stdio.h>
+#include <emu_defs.h>
+#include <linked_list.h>
+#include <cpu_addr_space.h>
+
+
 
 int regpc_delta = 0;
 
@@ -59,21 +64,63 @@ static	char* optable[256] = {
 		/* F */      "beq", "sbc", "illi", "illi",  "illi",  "sbc", "inc", "illi", "sed",  "sbc",  "illi",  "illi", "illi",  "sbc", "inc",  "illi"   /* F */
 };	
 
-char* start_disassemble(unsigned char* opcodes, int start, int until, char* strout){ //sign is important remember
-    unsigned char *regpc_ptr = &opcodes[start];
-    char *instruction;
-    for(int i = 0; i < until; i++){
-        instruction = optable[*(regpc_ptr)];
-        ((void(*)(void))addrtable[*(regpc_ptr)])();
-        printf("%04x %02x", (unsigned short int)(regpc_ptr-opcodes), *(regpc_ptr));
-        for(int op_ind = 0; op_ind < regpc_delta; op_ind++){
-            printf(" %02x", *(regpc_ptr + op_ind));
+
+
+//((void(*)(void))addrtable[*(regpc_ptr)])();
+int disasm_llist_id;
+
+int start_disassembler(uint16_t rom_addr, int size){ //sign is important remember
+    disasm_llist_id = create_llist();    
+    uint8_t opcode;
+    char buffer[50];
+    int index = 0, str_len;
+    while(index < size){
+
+        opcode =  *cas_mem_read(rom_addr + index);
+        ((void (*) (void))addrtable[opcode])();
+
+        if(regpc_delta == 2){
+            str_len = snprintf(buffer, 20, "%04hx %s %04hx\n",rom_addr+index, optable[opcode], ((*cas_mem_read(rom_addr + index + 2)) << 8) + (*cas_mem_read(rom_addr + index + 1)));
+        }else if(regpc_delta == 1){
+            str_len = snprintf(buffer, 20, "%04hx %s %02hx\n",rom_addr+index, optable[opcode], *cas_mem_read(rom_addr + index + 1));
+        }else if(regpc_delta == 0){
+            str_len =  snprintf(buffer, 20, "%04hx %s\n",rom_addr+index, optable[opcode]);
         }
-        for(int space_fix_ind = 0; space_fix_ind < 10 - regpc_delta*3; space_fix_ind++) printf(" ");
-        printf("%s\n", instruction);
-        regpc_ptr += regpc_delta + 1;    
+        
+        add_item_to_llist(disasm_llist_id, buffer, str_len, rom_addr + index);
+        //printf("%s\n", optable[opcode]);
+        index += 1 + regpc_delta; 
     }
-    return NULL;
+    return 0; 
+}
+
+char *get_disasm_at_addr(uint16_t addr){
+    int size = 0;
+
+    char *disasm_str = get_from_key(disasm_llist_id, addr, &size);
+
+    if((disasm_str == NULL)||(size == 0)){
+        printf("no diasm at %hx", addr);
+        return NULL;
+    }
+    
+    return disasm_str;
+}
+
+int dissassemble_at_addr(uint16_t rom_addr){ //sign is important remember  
+    uint8_t opcode;
+
+    opcode =  *cas_mem_read(rom_addr);
+    ((void (*) (void))addrtable[opcode])();
+
+    if(regpc_delta == 2){
+        printf("%04hx %s %hx %04hx\n", rom_addr, optable[opcode], opcode, ((*cas_mem_read(rom_addr + 2)) << 8) + (*cas_mem_read(rom_addr + 1)));
+    }else if(regpc_delta == 1){
+        printf("%04hx %s %hx %02hx\n", rom_addr, optable[opcode], opcode, *cas_mem_read(rom_addr + 1));
+    }else if(regpc_delta == 0){
+        printf("%04hx %s\n", rom_addr, optable[opcode]);
+    }
+    return 0;         
 }
 
 void dis_abso() { //dis_absolute
@@ -105,7 +152,7 @@ void dis_rel() { //dis_relative for branch ops (8-bit dis_immediate value, sign-
     regpc_delta = 1;
 }
 void dis_ind() { //indirect only for jmp
-	regpc_delta += 2;
+	regpc_delta = 2;
 }
 void dis_indx() { // (indirect,X) aka pre index
 

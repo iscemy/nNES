@@ -80,7 +80,9 @@ int cas_mem_write(uint16_t addr, uint8_t val){
         cpu_internal_ram[addr&0x7FF] = val;
     }else if((addr>=0x2000)&&(addr<0x4000)){//ppu registers
         //ppu_registers_ptr[addr&0x0007] = val;
+        
         write_ppu(addr, val);
+        
     }else if((addr>=0x4000)&&(addr<0x4018)){//apu registers
         apu_registers[addr&0x000F] = val;
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers

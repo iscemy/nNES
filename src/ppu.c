@@ -1,16 +1,32 @@
 #include <2c02.h>
 #include <emu_defs.h>
+#include <nes2_loader.h>
+#include <stdlib.h>
 uint8_t int_ram[0x2000]; //this can be remapped with mapper implement with mapper
 
-uint8_t *pattern_table_0, *pattern_table_1, *name_table_0, *name_table_1, *name_table_2, *name_table_3, *palette_ram_ind;
+uint8_t *pattern_table_0, *pattern_table_1, *name_table_0, *name_table_1, *name_table_2, *name_table_3;
+uint8_t palette_ram_ind[0x20];
 
+
+extern bool NMI_SIG;
 
 void mapper0_ppu(){
-
+    pattern_table_0 = chr_rom_ptr; 
+    pattern_table_1 = chr_rom_ptr + 0x0FFF;
+    name_table_0 = malloc(0x0400);
+    name_table_1 = name_table_0;
+    name_table_2 = name_table_0;
+    name_table_3 = name_table_0;
+    
 }
 
 void ppu_powerup_state(){
     *(uint8_t*)&ppu_registers.PPUSTATUS = 0xA0;
+    mapper0_ppu();
+}
+
+void generate_cpu_nmi(){
+    NMI_SIG = true;
 }
 
 
@@ -29,26 +45,34 @@ int scanline_counter = 0;
 void ppu_tick(){
     
     if(cc_cnt > 0){
-        if(scanline_counter < 20){
-            
-        }else if(scanline_counter == 21){
-            //dummy scanline does not renders a thing
-            
-        }else if(scanline_counter < 260){
+        if(scanline_counter < 240){
+            //Visible scanlines
+        }else if(scanline_counter == 240){
+            //post render scanline
+        }else if(scanline_counter == 241){
 
-        }else if(scanline_counter == 261){
             ppu_registers.PPUSTATUS.vblanks  = true;
+            if((ppu_registers.PPUCTRL.nmi_eovbi == 1)) //this must be happen without being at scanline 241
+                generate_cpu_nmi();                
+
+        }else if(scanline_counter <= 260){
+            
+        }else if(scanline_counter == 261){
+            ppu_registers.PPUSTATUS.vblanks  = false;
+            scanline_counter = 0;
         }else{
             //things went so wrong
         }
-
+        cc_cnt--;
        
 
     }else{
          cc_cnt = 341;  
          scanline_counter++;
     }
+
     
+
 
 }
 
@@ -86,6 +110,7 @@ uint8_t *get_addr(uint16_t addr){
 
     if(ret == NULL){
         //buss error
+        printf("ppu addr space bus error\n");
     }
     
     return ret;    
@@ -101,9 +126,6 @@ uint8_t address_latch_index = 1;
 uint16_t scroll_latch = 0x0000;
 uint8_t scroll_latch_index = 1;
 
-void generate_cpu_nmi(){
-
-}
 
 int write_ppu(uint16_t addr, uint8_t data){
     switch (addr){
@@ -131,13 +153,16 @@ int write_ppu(uint16_t addr, uint8_t data){
         break;
 
         case 0x2005:
+            
             scroll_latch &= 0xFF<<(scroll_latch_index*0x08);
             scroll_latch |= data<<(scroll_latch_index*0x08);
             scroll_latch_index--;
             if(scroll_latch_index < 0) scroll_latch_index = 1;
+            
         break;
 
         case 0x2006: //addr reg
+            printf("addr reg w %hx \n", address_latch);
             address_latch &= 0xFF<<(address_latch_index*0x08);
             address_latch |= data<<(address_latch_index*0x08);
             address_latch_index--;
@@ -145,6 +170,7 @@ int write_ppu(uint16_t addr, uint8_t data){
         break;
 
         case 0x2007: //data reg
+            printf("data reg w, %hx\n", address_latch);
             *get_addr(address_latch) = data;
             address_latch += ((ppu_registers.PPUCTRL.vram_inc_size*31) + 1);
         break;
@@ -184,24 +210,26 @@ uint8_t *read_ppu(uint16_t addr, int status){
         break;
 
         case 0x2003:
-
+            return (uint8_t*)&ppu_registers.OAMADDR;
         break;
 
         case 0x2004:
-
+             return (uint8_t*)&ppu_registers.OAMADDR;
         break;
 
         case 0x2005:
-
+            return (uint8_t*)&ppu_registers.OAMDATA;
         break;
 
         case 0x2006:
-
+            printf("addr reg w %hx \n", addr);
+            return (uint8_t*)&ppu_registers.PPUADDR;
         break;
 
         case 0x2007:
+            //printf("data reg r %hx \n", address_latch);
             address_latch += ((ppu_registers.PPUCTRL.vram_inc_size*31) + 1);            
-            return get_addr(address_latch); 
+            return (uint8_t*)get_addr(address_latch); 
         break;    
 
         case 0x4014:
