@@ -4,6 +4,9 @@
 
 #define uint16_t unsigned short
 
+#define WRITE_OP 0
+#define READ_OP 1
+
 //TODO: mapper should be exculuded from this source
 extern uint8_t submapper, *file_ptr, trainer, *prg_rom_ptr, *chr_rom_ptr, *misc_rom_ptr, *prg_ram, *prg_nvram;
 extern int prg_rom_size,chr_rom_size, prg_ram_size, prg_nvram_size, trainer_offset, misc_rom_size;
@@ -17,7 +20,7 @@ uint8_t apu_registers[16];
 
 char dummy_mem[0xFFFF];
 
-uint8_t* mapper0(uint16_t addr){
+uint8_t* mapper0(uint16_t addr, uint8_t rw){
     //printf("mapper mem read %02x\n",addr);
     if((addr>=0x6000)&&(addr < 0x8000)){
         if(prg_ram_size > 0){
@@ -27,10 +30,20 @@ uint8_t* mapper0(uint16_t addr){
             return 0;
         }
     }else if((addr>=0x8000)&&(addr < 0xC000)){
-        return &prg_rom_ptr[addr&0x3FFF];
+        if(rw == WRITE_OP){
+            
+        }else if(rw == READ_OP){
+            return &prg_rom_ptr[addr&0x3FFF];
+        }
+        
     }else if((addr>=0xC000)&&(addr <= 0xFFFF)){
         //printf("mapper0 8000 ffff %02x\n",prg_rom_ptr[0x79e]); 
-        return &prg_rom_ptr[(addr&0x3FFF)];
+        if(rw == WRITE_OP){
+            
+        }else if(rw == READ_OP){
+            return &prg_rom_ptr[(addr&0x3FFF)];
+        }
+        
     }else{
         return 0;
     }
@@ -54,8 +67,8 @@ uint8_t *cas_mem_read(uint16_t addr){
     }else if((addr>=0x4018)&&(addr<0x4020)){//test mode registers
 
     }else if((addr>=0x4020)&&(addr<=0xFFFF)){//to mapper
-        //only mapper0 for now
-        mapper_ret = mapper0(addr);
+
+        mapper_ret = mapper0(addr,READ_OP);
         if(mapper_ret != NULL){
             return mapper_ret;
         }else{
@@ -74,8 +87,7 @@ uint8_t *cas_mem_read(uint16_t addr){
 
 
 int cas_mem_write(uint16_t addr, uint8_t val){
-    //only mapper0 for now
-    //printf("cas_addspace write %02x\n",addr);
+   uint8_t *mapper_ret;
    if(addr < 0x2000){
         cpu_internal_ram[addr&0x7FF] = val;
     }else if((addr>=0x2000)&&(addr<0x4000)){//ppu registers
@@ -89,8 +101,12 @@ int cas_mem_write(uint16_t addr, uint8_t val){
 
     }else if((addr>=0x4020)&&(addr<=0xFFFF)){//to mapper
         //only mapper0 for now
-        *mapper0(addr) = val;
+        mapper_ret = mapper0(addr,WRITE_OP);
+        if(mapper_ret != NULL){
+            *mapper_ret = val;
+        }else{
 
+        }
     }else{
         return -1;
     }

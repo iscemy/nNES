@@ -66,11 +66,27 @@ void update_cpu_status_texts(uint8_t regac, uint8_t regx, uint8_t regy, uint16_t
 
 
 extern uint8_t *name_table_0;
+extern uint8_t *pattern_table_0, *pattern_table_1;
+//extern uint8_t frame_buffer[256][240];
+
+SDL_Renderer *renderer;
+SDL_Surface *game_surface;
+
+
+void draw_pixel_to_game_surface(int x, int y, char r, char g, char b){
+    *(uint8_t*)(game_surface->pixels + 4*y*256 + 4*x) = r;
+    *(uint8_t*)(game_surface->pixels + 4*y*256 + 4*x + 1) = g;
+    *(uint8_t*)(game_surface->pixels + 4*y*256 + 4*x + 2) = b;
+    *(uint8_t*)(game_surface->pixels + 4*y*256 + 4*x + 3) = 0;
+   
+
+}
+
 
 int main() {
     SDL_Event event;
     SDL_Rect rect1;
-    SDL_Renderer *renderer;
+    
     SDL_Texture *texture1;
     SDL_Window *window;
     char *font_path = "FreeSerif.ttf";
@@ -86,7 +102,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
    
-    load_nes2("donkey.nes");
+    load_nes2("nestest.nes");
     power_up_state();
     ppu_powerup_state();
     update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
@@ -95,22 +111,49 @@ int main() {
     start_disassembler(0x8000,0x7FFF);
     bool print_evey_inst = false;
     //return 0;
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+
+
+    game_surface =  SDL_CreateRGBSurface(0, 256, 240, 32,
+                                                      0, 0, 0, 0);
+    SDL_Rect game_rect;
+    game_rect.x = 0;
+    game_rect.y = 0;
+    game_rect.w = 256;
+    game_rect.h = 240;
+
+    uint8_t sdl_surface_pixel_test[256*4][240];
+
+    if (game_surface == NULL) {
+        SDL_Log("SDL_CreateRGBSurface() failed: %s", SDL_GetError());
+        return 0;
+    }
+    for(int i = 0; i<240; i++){
+       // draw_pixel_to_game_surface(i,i);
+    }
+
+    bool testf = false;
     while (!quit) {
 
         if(run == true){
             for(int i = 0; i<100; i++){
+
                         ppu_tick();
                         ppu_tick();
                         ppu_tick();
+                    
                         if((cpu_tick() == 1)&&(print_evey_inst == 1)){
                             dissassemble_at_addr(regpc);
                         }
+                        
 
             }
             update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
         }else{
             SDL_Delay(10);
         }  
+
         while (SDL_PollEvent(&event) == 1) {
             if (event.type == SDL_QUIT) {
                 quit = 1;
@@ -120,6 +163,7 @@ int main() {
                 switch( event.key.keysym.sym ){
                     case SDLK_LEFT:
                         memdump(name_table_0, 0x0, 0x400); 
+                        dump_pattern_table(pattern_table_0);
                         //start_disassemble(regpc, regpc, int size);
                         break;
                     case SDLK_RIGHT:
@@ -142,7 +186,9 @@ int main() {
                         cpu_tick();               
                         dissassemble_at_addr(regpc);
                         update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
-                            
+                    case SDLK_b:
+                        
+                                   
                     break;
                     default:
                         break;
@@ -150,21 +196,22 @@ int main() {
             }
         }
         
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+        //
         SDL_RenderClear(renderer);
 
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, game_surface);
 
-
-
+        SDL_RenderCopy(renderer, texture, NULL, &game_rect);
         for(int line_index = 0; line_index<sizeof(lines)/sizeof(char*);line_index++){
             if(lines[line_index] != 0){
                 get_text_and_rect(renderer, EMU_INFO_YOFFSET, line_index*(FONT_SIZE),lines[line_index] , font, &texture1, &rect1);
-                 SDL_RenderCopy(renderer, texture1, NULL, &rect1);
-                 SDL_DestroyTexture(texture1);
+                SDL_RenderCopy(renderer, texture1, NULL, &rect1);
+                
+                SDL_DestroyTexture(texture1);
             }
         }
         SDL_RenderPresent(renderer);
-        
+        SDL_DestroyTexture(texture);
     }
 
     /* Deinit TTF. */

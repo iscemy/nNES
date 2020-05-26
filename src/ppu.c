@@ -2,21 +2,27 @@
 #include <emu_defs.h>
 #include <nes2_loader.h>
 #include <stdlib.h>
+
+
+
 uint8_t int_ram[0x2000]; //this can be remapped with mapper implement with mapper
 
 uint8_t *pattern_table_0, *pattern_table_1, *name_table_0, *name_table_1, *name_table_2, *name_table_3;
+uint8_t *base_name_table;
 uint8_t palette_ram_ind[0x20];
 
 
-extern bool NMI_SIG;
 
+extern bool NMI_SIG;
+//extern SDL_Renderer *renderer;
 void mapper0_ppu(){
     pattern_table_0 = chr_rom_ptr; 
-    pattern_table_1 = chr_rom_ptr + 0x0FFF;
+    pattern_table_1 = chr_rom_ptr + 0x1000;
     name_table_0 = malloc(0x0400);
     name_table_1 = name_table_0;
     name_table_2 = name_table_0;
     name_table_3 = name_table_0;
+    base_name_table = name_table_0;
     
 }
 
@@ -34,21 +40,77 @@ int pixel_counter = 0;
 
 
 
-int render_scanline(){
-    
-    return 0;
-}
-
-int cc_cnt = 341;
+int cc_cnt = 0;   //this global variables could slows down to program according the hardware and compiler
+                    //this will work fine on a modern computer but not at a mcu 
+ 
 int scanline_counter = 0;
 
-void ppu_tick(){
+/*
     
-    if(cc_cnt > 0){
+     i__________
+   j|           |
+    |           |   
+    |           |
+    |           |
+    
+ppu clock counter -> i
+scanline -> j
+j = scanline / 8
+i = ppu_cc/8
+
+
+namtable(i,j) -> pattern_table
+
+
+*/
+uint8_t frame_buffer[256][240]; //for test purposes pixels should be drawed to screen directly
+
+extern void draw_pixel_to_game_surface(int x, int y, char r, char g, char b);
+
+uint8_t render_pixel(int ppu_cc, int sline_c){
+    if(ppu_cc == 0){
+        
+    }else if(ppu_cc <= 256){
+        int i = ppu_cc%256;
+        unsigned char name_table_val = *(base_name_table + (sline_c/8)*32 + ppu_cc/8);
+        unsigned char *pattern_table_addr = pattern_table_0 + name_table_val*0x10;
+
+        //printf("\npattern %d\n", pattern_ind);
+        int shift_count = 7 - ppu_cc%8;
+
+        unsigned char ptand = (*(pattern_table_addr + sline_c%8)) & (*(pattern_table_addr + sline_c%8 + 8));
+        unsigned char ptxor  = (*(pattern_table_addr + sline_c%8)) ^ (*(pattern_table_addr + sline_c%8 + 8));
+
+        uint8_t pixel = ((ptand&(1<<(shift_count)))>>(shift_count))*2 + ((ptxor&(1<<(shift_count)))>>(shift_count));
+        //frame_buffer[sline_c][ppu_cc] = pixel;
+        if(pixel != 0){ 
+            draw_pixel_to_game_surface(ppu_cc, sline_c,255,255,255);
+        }else{
+            draw_pixel_to_game_surface(ppu_cc, sline_c,0,0,0);
+        }    
+
+    
+
+
+        //unsigned charm patten_table_val = 
+    }else if(ppu_cc <= 320){
+
+    }else if(ppu_cc <= 336){
+
+    }else if(ppu_cc <= 340){
+
+    }
+}
+
+
+void ppu_tick(){
+    int nt_x,nt_y;
+    if(cc_cnt < 341){
         if(scanline_counter < 240){
+            render_pixel(cc_cnt, scanline_counter);
             //Visible scanlines
         }else if(scanline_counter == 240){
-            //post render scanline
+           
         }else if(scanline_counter == 241){
 
             ppu_registers.PPUSTATUS.vblanks  = true;
@@ -63,11 +125,11 @@ void ppu_tick(){
         }else{
             //things went so wrong
         }
-        cc_cnt--;
+        cc_cnt++;
        
 
     }else{
-         cc_cnt = 341;  
+         cc_cnt = 0;  
          scanline_counter++;
     }
 
@@ -121,7 +183,7 @@ uint8_t *get_addr(uint16_t addr){
 //}
 
 uint16_t address_latch = 0x0000;
-uint8_t address_latch_index = 1;
+int  address_latch_index = 1;
 
 uint16_t scroll_latch = 0x0000;
 uint8_t scroll_latch_index = 1;
@@ -162,17 +224,17 @@ int write_ppu(uint16_t addr, uint8_t data){
         break;
 
         case 0x2006: //addr reg
-            printf("ADDR reg w %hx \n", address_latch);
+            //printf("ADDR reg w %hx \n", address_latch);
             address_latch &= ~(0xFF<<(address_latch_index*0x08));
             address_latch |= data<<(address_latch_index*0x08);
             address_latch_index--;
-            printf("ADDR reg w %hx %hx \n", address_latch, data);
+            printf("ADDR reg w %hx %hx %hx \n", address_latch, data, address_latch_index);
 
             if(address_latch_index < 0) address_latch_index = 1;   
         break;
 
         case 0x2007: //data reg
-            printf("DATA reg w, %hx\n", address_latch);
+            printf("DATA reg w, %hx %hx\n", address_latch, data);
             *get_addr(address_latch) = data;
             address_latch += ((ppu_registers.PPUCTRL.vram_inc_size*31) + 1);
         break;

@@ -9,7 +9,7 @@ bool is_page_crossed = 0;
 uint16_t operand_addr = 0;
 bool i_mask_pre = 0;
 
-
+unsigned int opo;
 
 bool NMI_SIG;
 
@@ -19,14 +19,14 @@ void imp() { //implied
 }
 void abso() { //absolute
     operand_addr = ((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1);
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_abso;
 	regpc_d = 2;
 }
 void absx() { //absolute,X
     operand_addr = ((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regx;
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_absx;
 	if((*cas_mem_read(regpc+1) + regx) > 0xFF){
@@ -36,7 +36,7 @@ void absx() { //absolute,X
 }
 void absy() { //absolute,Y
     operand_addr = ((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regy;
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_absy;
 	if((*cas_mem_read(regpc+1) + regy) > 0xFF){
@@ -50,27 +50,28 @@ void acc() { //accumulator
 	addr_mode = addr_mode_acc;
 }
 void imm() { //immediate
-	operand = *cas_mem_read(regpc+1);
+    operand_addr = regpc + 1;
+	//operand = *cas_mem_read(regpc+1);
 	addr_mode = addr_mode_imm;
 	regpc_d = 1;
 }
 void zp() { //zero-page
     operand_addr = *cas_mem_read(regpc+1);
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_zp;
 	regpc_d = 1;
 }
 void zpx() { //zero-page,X
     operand_addr = (*cas_mem_read(regpc+1) + regx)&0xFF;
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_zpx;
 	regpc_d = 1;
 }
 void zpy() { //zero-page,Y
     operand_addr = (*cas_mem_read(regpc+1) + regy)&0xFF;
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_zpy;
 	regpc_d = 1;
@@ -89,14 +90,14 @@ void ind() { //indirect only for jmp
 }
 void indx() { // (indirect,X) aka pre index
     operand_addr = *cas_mem_read((*cas_mem_read(regpc+1) + regx)&0xFF) + (*cas_mem_read((*cas_mem_read(regpc+1) + regx + 1)&0xFF) << 8);
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_indx;
 	regpc_d = 1;
 }
 void indy() { // (indirect),Y aka post index
     operand_addr = *cas_mem_read((*cas_mem_read(regpc+1))) + (*cas_mem_read((*cas_mem_read(regpc+1) + 1)&0xFF) << 8) + regy;
-	operand = *cas_mem_read(operand_addr);
+	//operand = *cas_mem_read(operand_addr);
 	
 	addr_mode = addr_mode_indy;
 	if(*cas_mem_read((*cas_mem_read(regpc+1))) + regy > 0xFF){
@@ -124,6 +125,7 @@ static inline void Z_flag(unsigned char val)
 /*instructions*/
 //ok
 void adc(){ // BCD not implemented and not necessary for nes 
+    operand = *cas_mem_read(operand_addr);
 	unsigned int temp = regac + operand + status_r.carry;
 	status_r.carry = temp > 0xFF;
 	status_r.overflow = ((temp ^ regac) & ((temp ^ operand)&0x80)) != 0;
@@ -134,20 +136,31 @@ void adc(){ // BCD not implemented and not necessary for nes
 
 //ok
 void and_(){
+    operand = *cas_mem_read(operand_addr);
 	regac &= operand;
 	N_flag(regac);
 	Z_flag(regac);
 }
 //ok
 void asl(){
-	unsigned int temp = 0;
-	status_r.carry = GET_BIT(operand,7);
-	temp = operand << 1;
 
-	//regac = temp&0xFF;
-    regac = temp&0xFF;
-	N_flag(temp&0xFF);
-	Z_flag(temp&0xFF);	
+    
+
+    if(addr_mode == addr_mode_acc){
+        operand = regac;
+	    status_r.carry = GET_BIT(operand,7);
+	    outval = operand << 1;
+        regac = outval&0xFF;
+    }else{
+        operand = *cas_mem_read(operand_addr);
+	    status_r.carry = GET_BIT(operand,7);
+	    outval = operand << 1;       
+        cas_mem_write(operand_addr, outval);
+    }
+
+    
+	N_flag(outval&0xFF);
+	Z_flag(outval&0xFF);	
 }
 
 void bcc(){//clock will vary with new/page success
@@ -255,6 +268,7 @@ void clv(){
 }
 
 void bit(){
+    operand = *cas_mem_read(operand_addr);
 	outval = operand & regac;
     //printf("debug: %hx , out:%hx\n",operand, outval);
 	status_r.overflow = GET_BIT(operand,6);
@@ -263,14 +277,15 @@ void bit(){
 }
 
 void cmp(){
+    operand = *cas_mem_read(operand_addr);
 	outval = regac - operand;
-
 	status_r.carry = regac >= operand;
 	N_flag(outval);
 	Z_flag(outval);
 }
 
 void cpx(){
+    operand = *cas_mem_read(operand_addr);
 	outval = regx - operand;
     
 	status_r.carry = regx >= operand;
@@ -279,6 +294,7 @@ void cpx(){
 }
 
 void cpy(){
+    operand = *cas_mem_read(operand_addr);
 	outval = regy - operand;
 	status_r.carry = regy >= operand;
 	N_flag(outval);
@@ -286,6 +302,7 @@ void cpy(){
 }
 
 void dec(){
+    operand = *cas_mem_read(operand_addr);
     unsigned char val = operand - 1;
     cas_mem_write(operand_addr, val);
 	N_flag(val);
@@ -305,12 +322,14 @@ void dey(){
 }
 //ok, only implied mem acc mode
 void eor(){
+    operand = *cas_mem_read(operand_addr);
 	regac = regac ^ operand;
 	N_flag(regac);
 	Z_flag(regac);		
 }
 //ok
 void inc(){
+    operand = *cas_mem_read(operand_addr);
     unsigned char val = operand + 1;
 	cas_mem_write(operand_addr, val);
 	N_flag(val);
@@ -342,18 +361,21 @@ void jmp(){ //if indirect vector fall on a page bounday a bug exists and it need
 }
 
 void lda(){
+    operand = *cas_mem_read(operand_addr);
 	regac = operand;
 	N_flag(regac);
 	Z_flag(regac);		
 }
 
 void ldx(){
+    operand = *cas_mem_read(operand_addr);
 	regx = operand;
 	N_flag(regx);
 	Z_flag(regx);		
 }
 
 void ldy(){
+    operand = *cas_mem_read(operand_addr);
 	regy = operand;
 	N_flag(regy);
 	Z_flag(regy);		
@@ -361,16 +383,19 @@ void ldy(){
 
 void lsr(){
 
-	status_r.carry = GET_BIT(operand,0);
-	outval = operand>>1;
-	N_flag(outval);
-	Z_flag(outval);	
-
     if(addr_mode == addr_mode_acc){	
+        operand = regac;
+	    status_r.carry = GET_BIT(operand,0);
+	    outval = operand>>1;
 	    regac = outval;
     }else{	       
+        operand = *cas_mem_read(operand_addr);
+	    status_r.carry = GET_BIT(operand,0);
+	    outval = operand>>1;
         cas_mem_write(operand_addr, outval);
-    }   
+    } 
+	N_flag(outval);
+	Z_flag(outval);	  
 }
 
 void nop() {
@@ -378,12 +403,14 @@ void nop() {
 }
 
 void ora(){
+    operand = *cas_mem_read(operand_addr);
 	regac = regac | operand;
 	N_flag(regac);
 	Z_flag(regac);			
 }
 
 void pha(){
+    
     cas_mem_write(0x100 + regsp, regac);
 	regsp--;
 }
@@ -413,32 +440,42 @@ void plp(){
 
 
 void rol(){
-	outval = ((operand<<1)|status_r.carry)&0xFF;
-	status_r.carry = GET_BIT(operand,7);
-	N_flag(outval);
-	Z_flag(outval);	
+
     if(addr_mode == addr_mode_acc){	
+        operand = regac;
+	    outval = ((operand<<1)|status_r.carry)&0xFF;
+	    status_r.carry = GET_BIT(operand,7);
 	    regac = outval;
-    }else{	       
+    }else{	 
+        operand = *cas_mem_read(operand_addr);
+	    outval = ((operand<<1)|status_r.carry)&0xFF;
+	    status_r.carry = GET_BIT(operand,7);      
         cas_mem_write(operand_addr, outval);
     }  
+	N_flag(outval);
+	Z_flag(outval);	
 }
 
 void ror(){
-	outval = ((operand>>1)|(status_r.carry<<7))&0xFF;
-	status_r.carry = GET_BIT(operand,0);
-	N_flag(outval);
-	Z_flag(outval);	
+
     if(addr_mode == addr_mode_acc){	
+        operand = regac;
+    	outval = ((operand>>1)|(status_r.carry<<7))&0xFF;
+    	status_r.carry = GET_BIT(operand,0);
 	    regac = outval;
     }else{	       
+        operand = *cas_mem_read(operand_addr);
+    	outval = ((operand>>1)|(status_r.carry<<7))&0xFF;
+    	status_r.carry = GET_BIT(operand,0);
         cas_mem_write(operand_addr, outval);
     }  
+	N_flag(outval);
+	Z_flag(outval);	
 }
 
 void sbc(){
 
-    
+    operand = *cas_mem_read(operand_addr);
 	outval =  regac + ((operand^0xFF) + status_r.carry);
 	N_flag(outval);
 	Z_flag(outval);	
