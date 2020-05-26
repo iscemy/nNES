@@ -6,8 +6,10 @@
 
 unsigned int operand = 0, outval = 0, cycles, addr_mode = 0, total_cycle = 0, regpc_d;
 bool is_page_crossed = 0;
-void *operand_addr = NULL;
+uint16_t operand_addr = 0;
 bool i_mask_pre = 0;
+
+
 
 bool NMI_SIG;
 
@@ -16,15 +18,16 @@ void imp() { //implied
     //no operand implied by instruction
 }
 void abso() { //absolute
-    
-	operand = *cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1));
-	operand_addr = cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1));
+    operand_addr = ((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1);
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_abso;
 	regpc_d = 2;
 }
 void absx() { //absolute,X
-	operand = *cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regx);
-	operand_addr = cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regx);
+    operand_addr = ((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regx;
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_absx;
 	if((*cas_mem_read(regpc+1) + regx) > 0xFF){
 		is_page_crossed = 1;
@@ -32,8 +35,9 @@ void absx() { //absolute,X
 	regpc_d = 2;
 }
 void absy() { //absolute,Y
-	operand = *cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regy);
-	operand_addr = cas_mem_read(((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regy);
+    operand_addr = ((*cas_mem_read(regpc+2))<<8) + *cas_mem_read(regpc+1) + regy;
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_absy;
 	if((*cas_mem_read(regpc+1) + regy) > 0xFF){
 		is_page_crossed = 1;
@@ -51,20 +55,23 @@ void imm() { //immediate
 	regpc_d = 1;
 }
 void zp() { //zero-page
-	operand = *cas_mem_read(*cas_mem_read(regpc+1));
-	operand_addr = cas_mem_read(*cas_mem_read(regpc+1));
+    operand_addr = *cas_mem_read(regpc+1);
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_zp;
 	regpc_d = 1;
 }
 void zpx() { //zero-page,X
-	operand = *cas_mem_read((*cas_mem_read(regpc+1) + regx)&0xFF);
-	operand_addr = cas_mem_read((*cas_mem_read(regpc+1) + regx)&0xFF);
+    operand_addr = (*cas_mem_read(regpc+1) + regx)&0xFF;
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_zpx;
 	regpc_d = 1;
 }
 void zpy() { //zero-page,Y
-	operand = *cas_mem_read((*cas_mem_read(regpc+1) + regy)&0xFF);
-	operand_addr = cas_mem_read((*cas_mem_read(regpc+1) + regy)&0xFF);
+    operand_addr = (*cas_mem_read(regpc+1) + regy)&0xFF;
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_zpy;
 	regpc_d = 1;
 }
@@ -81,14 +88,16 @@ void ind() { //indirect only for jmp
 	regpc += 2;
 }
 void indx() { // (indirect,X) aka pre index
-	operand = *cas_mem_read(*cas_mem_read((*cas_mem_read(regpc+1) + regx)&0xFF) + (*cas_mem_read((*cas_mem_read(regpc+1) + regx + 1)&0xFF) << 8));
-	operand_addr = &*cas_mem_read(*cas_mem_read((*cas_mem_read(regpc+1) + regx)&0xFF) + (*cas_mem_read((*cas_mem_read(regpc+1) + regx + 1)&0xFF) << 8));
+    operand_addr = *cas_mem_read((*cas_mem_read(regpc+1) + regx)&0xFF) + (*cas_mem_read((*cas_mem_read(regpc+1) + regx + 1)&0xFF) << 8);
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_indx;
 	regpc_d = 1;
 }
 void indy() { // (indirect),Y aka post index
-	operand = *cas_mem_read(*cas_mem_read((*cas_mem_read(regpc+1))) + (*cas_mem_read((*cas_mem_read(regpc+1) + 1)) << 8) + regy);
-	operand_addr = &*cas_mem_read(*cas_mem_read((*cas_mem_read(regpc+1))) + (*cas_mem_read((*cas_mem_read(regpc+1) + 1)&0xFF) << 8) + regy);
+    operand_addr = *cas_mem_read((*cas_mem_read(regpc+1))) + (*cas_mem_read((*cas_mem_read(regpc+1) + 1)&0xFF) << 8) + regy;
+	operand = *cas_mem_read(operand_addr);
+	
 	addr_mode = addr_mode_indy;
 	if(*cas_mem_read((*cas_mem_read(regpc+1))) + regy > 0xFF){
 		is_page_crossed = 1;
@@ -136,7 +145,7 @@ void asl(){
 	temp = operand << 1;
 
 	//regac = temp&0xFF;
-    *(unsigned char*)operand_addr = temp&0xFF;
+    regac = temp&0xFF;
 	N_flag(temp&0xFF);
 	Z_flag(temp&0xFF);	
 }
@@ -277,9 +286,10 @@ void cpy(){
 }
 
 void dec(){
-	*(unsigned char*)operand_addr = operand - 1;
-	N_flag(*(unsigned char*)operand_addr);
-	Z_flag(*(unsigned char*)operand_addr);	
+    unsigned char val = operand - 1;
+    cas_mem_write(operand_addr, val);
+	N_flag(val);
+	Z_flag(val);	
 }
 //ok, only implied mem acc mode
 void dex(){
@@ -301,9 +311,10 @@ void eor(){
 }
 //ok
 void inc(){
-	*(unsigned char*)operand_addr = operand + 1;
-	N_flag(*(unsigned char*)operand_addr);
-	Z_flag(*(unsigned char*)operand_addr);	
+    unsigned char val = operand + 1;
+	cas_mem_write(operand_addr, val);
+	N_flag(val);
+	Z_flag(val);	
 }
 //ok, only implied mem acc mode
 void inx(){
@@ -349,11 +360,17 @@ void ldy(){
 }
 
 void lsr(){
+
 	status_r.carry = GET_BIT(operand,0);
 	outval = operand>>1;
 	N_flag(outval);
-	Z_flag(outval);		
-	*(unsigned char*)operand_addr = outval;
+	Z_flag(outval);	
+
+    if(addr_mode == addr_mode_acc){	
+	    regac = outval;
+    }else{	       
+        cas_mem_write(operand_addr, outval);
+    }   
 }
 
 void nop() {
@@ -400,7 +417,11 @@ void rol(){
 	status_r.carry = GET_BIT(operand,7);
 	N_flag(outval);
 	Z_flag(outval);	
-	*(unsigned char*)operand_addr = outval;
+    if(addr_mode == addr_mode_acc){	
+	    regac = outval;
+    }else{	       
+        cas_mem_write(operand_addr, outval);
+    }  
 }
 
 void ror(){
@@ -408,7 +429,11 @@ void ror(){
 	status_r.carry = GET_BIT(operand,0);
 	N_flag(outval);
 	Z_flag(outval);	
-	*(unsigned char*)operand_addr = outval;
+    if(addr_mode == addr_mode_acc){	
+	    regac = outval;
+    }else{	       
+        cas_mem_write(operand_addr, outval);
+    }  
 }
 
 void sbc(){
@@ -435,16 +460,16 @@ void sei(){
 	status_r.interrupt = 1;
 }
 
-void sta(){
-	*(unsigned char*)operand_addr = regac;
+void sta(){  
+    cas_mem_write(operand_addr, regac);
 }
 
 void stx(){
-	*(unsigned char*)operand_addr = regx;
+    cas_mem_write(operand_addr, regx);
 }
 
 void sty(){
-	*(unsigned char*)operand_addr = regy;
+	cas_mem_write(operand_addr, regy);
 }
 
 void tax(){
@@ -530,7 +555,7 @@ void reset(){
 	regx = 0x00;
 	regsp = 0xFD;
 	operand = 0;
-	operand_addr = NULL;
+	operand_addr = 0;
 	regpc = ((*cas_mem_read(0xFFFD))<<8) + *cas_mem_read(0xFFFC);
 	
 }

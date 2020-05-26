@@ -105,12 +105,11 @@ int main() {
                         if((cpu_tick() == 1)&&(print_evey_inst == 1)){
                             dissassemble_at_addr(regpc);
                         }
-                        if(regpc == 0xf4fc){
-                            printf("0xf4fc\n");
-                            //return 0;                      
-                        }
+
             }
             update_cpu_status_texts(regac, regx, regy, regpc,  regsp);
+        }else{
+            SDL_Delay(10);
         }  
         while (SDL_PollEvent(&event) == 1) {
             if (event.type == SDL_QUIT) {
@@ -165,7 +164,7 @@ int main() {
             }
         }
         SDL_RenderPresent(renderer);
-        SDL_Delay(10);
+        
     }
 
     /* Deinit TTF. */

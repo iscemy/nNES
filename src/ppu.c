@@ -130,7 +130,7 @@ uint8_t scroll_latch_index = 1;
 int write_ppu(uint16_t addr, uint8_t data){
     switch (addr){
         case 0x2000: //ppuctrl wo
-            printf("write ppuctrl");
+
             *(uint8_t*)&ppu_registers.PPUCTRL = data; //nss
         break;
 
@@ -162,15 +162,17 @@ int write_ppu(uint16_t addr, uint8_t data){
         break;
 
         case 0x2006: //addr reg
-            printf("addr reg w %hx \n", address_latch);
-            address_latch &= 0xFF<<(address_latch_index*0x08);
+            printf("ADDR reg w %hx \n", address_latch);
+            address_latch &= ~(0xFF<<(address_latch_index*0x08));
             address_latch |= data<<(address_latch_index*0x08);
             address_latch_index--;
+            printf("ADDR reg w %hx %hx \n", address_latch, data);
+
             if(address_latch_index < 0) address_latch_index = 1;   
         break;
 
         case 0x2007: //data reg
-            printf("data reg w, %hx\n", address_latch);
+            printf("DATA reg w, %hx\n", address_latch);
             *get_addr(address_latch) = data;
             address_latch += ((ppu_registers.PPUCTRL.vram_inc_size*31) + 1);
         break;
@@ -222,7 +224,7 @@ uint8_t *read_ppu(uint16_t addr, int status){
         break;
 
         case 0x2006:
-            printf("addr reg w %hx \n", addr);
+            //printf("addr reg w %hx \n", addr);
             return (uint8_t*)&ppu_registers.PPUADDR;
         break;
 
